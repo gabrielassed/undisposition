@@ -57,35 +57,54 @@ async function localGetSync(key) {
 function removeDynamicRules() {
   // remove all rules
   browser.declarativeNetRequest.updateDynamicRules({
-    removeRuleIds: [1],
+    removeRuleIds: [1, 2],
   });
 }
 
 async function setDynamicRule() {
   const headerKey = 'content-disposition';
-  let list = await localGetSync('blacklist');
+  let list = (await localGetSync('blacklist')) || [];
+
+  const ruleGeneral = {
+    id: 1,
+    priority: 1,
+    action: {
+      type: 'modifyHeaders',
+      responseHeaders: [
+        {
+          header: headerKey,
+          operation: 'remove',
+        },
+      ],
+    },
+    condition: {
+      resourceTypes: ['main_frame', 'sub_frame', 'script'],
+      excludedInitiatorDomains: list,
+      excludedRequestDomains: list,
+    },
+  };
+
+  const ruleCSV = {
+    id: 2,
+    priority: 2,
+    action: {
+      type: 'modifyHeaders',
+      responseHeaders: [
+        { header: headerKey, operation: 'remove' },
+        { header: 'content-type', operation: 'set', value: 'text/plain' },
+      ],
+    },
+    condition: {
+      regexFilter: '\\.(csv|CSV)($|\\?)',
+      resourceTypes: ['main_frame', 'sub_frame'],
+      excludedInitiatorDomains: list,
+      excludedRequestDomains: list,
+    },
+  };
+
   browser.declarativeNetRequest.updateDynamicRules({
-    addRules: [
-      {
-        id: 1,
-        priority: 1,
-        action: {
-          type: 'modifyHeaders',
-          responseHeaders: [
-            {
-              header: headerKey,
-              operation: 'remove',
-            },
-          ],
-        },
-        condition: {
-          resourceTypes: ['main_frame', 'sub_frame', 'script'],
-          excludedInitiatorDomains: list,
-          excludedRequestDomains: list,
-        },
-      },
-    ],
-    removeRuleIds: [1],
+    addRules: [ruleGeneral, ruleCSV],
+    removeRuleIds: [1, 2],
   });
 }
 
