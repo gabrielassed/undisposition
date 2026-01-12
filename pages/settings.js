@@ -15,7 +15,12 @@ function _submitHandler() {
   let list = document.getElementById('blacklist').value.split('\n')
   list = list.map(e => trimHost(e))
   list = list.filter(e => e)
-  browser.storage.local.set({ blacklist: list })
+  browser.storage.local.set({ blacklist: list }, function () {
+    // update script rules
+    browser.runtime.sendMessage({}, function (response) {
+      console.log(response)
+    })
+  })
   loadData()
 }
 
@@ -37,7 +42,7 @@ function _testHandler() {
   if (results.length > 0) {
     document.getElementById('testResult').innerHTML = '<br/>Found matches:<br/><br/>' + results.join('<br />\n')
   } else {
-    document.getElementById('testResult').innerHTML = '<br/>No matches'
+    document.getElementById('testResult').innerHTML = '<br/>No match'
   }
 }
 
