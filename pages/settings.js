@@ -3,11 +3,13 @@ if (typeof browser === 'undefined') {
 }
 
 function loadData() {
-  browser.storage.local.get('blacklist', function (data) {
+  browser.storage.local.get(['blacklist', 'csvPreview'], function (data) {
     if (data.blacklist === undefined) {
       data.blacklist = [];
     }
     document.getElementById('blacklist').value = data.blacklist?.join('\n');
+
+    document.getElementById('csvPreview').checked = !!data.csvPreview;
   });
 }
 
@@ -15,12 +17,21 @@ function _submitHandler() {
   let list = document.getElementById('blacklist').value.split('\n');
   list = list.map((e) => trimHost(e));
   list = list.filter((e) => e);
-  browser.storage.local.set({ blacklist: list }, function () {
-    // update script rules
-    browser.runtime.sendMessage({}, function (response) {
-      console.log(response);
-    });
-  });
+
+  let csvPreviewStatus = document.getElementById('csvPreview').checked;
+
+  browser.storage.local.set(
+    {
+      blacklist: list,
+      csvPreview: csvPreviewStatus,
+    },
+    function () {
+      // update script rules
+      browser.runtime.sendMessage({}, function (response) {
+        console.log(response);
+      });
+    }
+  );
   loadData();
 }
 

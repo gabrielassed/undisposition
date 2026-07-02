@@ -64,46 +64,65 @@ function removeDynamicRules() {
 async function setDynamicRule() {
   const headerKey = 'content-disposition';
   let list = (await localGetSync('blacklist')) || [];
+  let usePreview = await localGetSync('csvPreview');
 
-  const ruleGeneral = {
+  let newRules = [];
+
+  newRules.push({
     id: 1,
     priority: 1,
     action: {
       type: 'modifyHeaders',
-      responseHeaders: [
-        {
-          header: headerKey,
-          operation: 'remove',
-        },
-      ],
+      responseHeaders: [{ header: headerKey, operation: 'remove' }],
     },
     condition: {
       resourceTypes: ['main_frame', 'sub_frame', 'script'],
       excludedInitiatorDomains: list,
       excludedRequestDomains: list,
     },
-  };
+  });
 
-  const ruleCSV = {
-    id: 2,
-    priority: 2,
-    action: {
-      type: 'modifyHeaders',
-      responseHeaders: [
-        { header: headerKey, operation: 'remove' },
-        { header: 'content-type', operation: 'set', value: 'text/plain' },
-      ],
-    },
-    condition: {
-      regexFilter: '\\.(csv|CSV)($|\\?)',
-      resourceTypes: ['main_frame', 'sub_frame'],
-      excludedInitiatorDomains: list,
-      excludedRequestDomains: list,
-    },
-  };
+  if (usePreview) {
+    const extensionPage = chrome.runtime.getURL('pages/viewer.html');
+
+    newRules.push({
+      id: 2,
+      priority: 2,
+      action: {
+        type: 'redirect',
+        redirect: {
+          regexSubstitution: extensionPage + '?url=\\0',
+        },
+      },
+      condition: {
+        regexFilter: '^https?://.*\\.(csv|CSV)($|\\?.*)',
+        resourceTypes: ['main_frame'],
+        excludedInitiatorDomains: list,
+        excludedRequestDomains: list,
+      },
+    });
+  } else {
+    newRules.push({
+      id: 2,
+      priority: 2,
+      action: {
+        type: 'modifyHeaders',
+        responseHeaders: [
+          { header: headerKey, operation: 'remove' },
+          { header: 'content-type', operation: 'set', value: 'text/plain' },
+        ],
+      },
+      condition: {
+        regexFilter: '\\.(csv|CSV)($|\\?)',
+        resourceTypes: ['main_frame', 'sub_frame'],
+        excludedInitiatorDomains: list,
+        excludedRequestDomains: list,
+      },
+    });
+  }
 
   browser.declarativeNetRequest.updateDynamicRules({
-    addRules: [ruleGeneral, ruleCSV],
+    addRules: newRules,
     removeRuleIds: [1, 2],
   });
 }
